@@ -16,7 +16,7 @@ DATASET_REGISTRY = {
 DATASET_DEFAULTS = {
     'isic':    {'img_size': 256, 'n_channels': 3},
     'glas':    {'img_size': 128, 'n_channels': 3},
-    'covid':   {'img_size': 512, 'n_channels': 3},
+    'covid':   {'img_size': 256, 'n_channels': 3},
     'lung':    {'img_size': 256, 'n_channels': 3},
     'dsb2018': {'img_size': 256, 'n_channels': 3},
 }

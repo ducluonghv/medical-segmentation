@@ -1,16 +1,20 @@
 """
-Clean-CC-CCII COVID-19 Pneumonia Lesion Segmentation Dataset
+COVID-19 Infection Segmentation — COVID-QU-Ex Dataset
 
-Expected folder layout:
+Source: Kaggle anasmohammedtahir/covidqu
+        "Infection Segmentation Data" subset — COVID-19 class only
+
+Expected folder layout (flat, after prepare_covidqu.py):
     <root>/
-        images/   *.png  (260 chest CT slices, pixel range [0,255])
-        masks/    *.png  (binary infection masks)
+        images/   *.png  (2913 chest X-ray slices)
+        masks/    *.png  (binary infection masks, same filenames)
 
-Split: COVID (260 ảnh tổng)
-       180 train / 20 val / 60 test  (69% / 8% / 23%)
-Input resize: 512×512
+Split (pre-defined in COVID-QU-Ex, preserved via stem suffix):
+    Train: 1864 | Val: 466 | Test: 583
+    Detected automatically from filename: covid_<id>_train / _val / _test
+    Fallback: random 64%/16%/20% split if suffix not present.
 
-Download: http://ncov-ai.big.ac.cn/download
+Input resize: 256×256
 """
 import random
 from pathlib import Path
@@ -24,29 +28,26 @@ import torchvision.transforms.functional as TF
 
 
 class COVIDDataset(Dataset):
-    """COVID-19 pneumonia lesion segmentation on chest CT slices.
+    """COVID-19 infection segmentation on chest X-ray images (COVID-QU-Ex).
 
     Args:
         root      : dataset root (must contain images/ and masks/)
         split     : 'train' | 'val' | 'test'
-        img_size  : resize resolution (default 512, matching paper)
+        img_size  : resize resolution (default 256)
         augment   : random augmentation on train split
-        val_ratio : fraction of train set for validation
-        seed      : reproducibility seed
+        seed      : reproducibility seed (used only for fallback random split)
     """
 
-    # CT images are grayscale; replicate to 3 channels for consistency
     MEAN = [0.5, 0.5, 0.5]
     STD  = [0.5, 0.5, 0.5]
 
     def __init__(
         self,
-        root:      str,
-        split:     str  = 'train',
-        img_size:  int  = 512,
-        augment:   bool = True,
-        val_ratio: float = 0.1,
-        seed:      int  = 42,
+        root:     str,
+        split:    str  = 'train',
+        img_size: int  = 256,
+        augment:  bool = True,
+        seed:     int  = 42,
     ):
         assert split in ('train', 'val', 'test')
         self.split    = split
@@ -60,6 +61,7 @@ class COVIDDataset(Dataset):
         if not all_imgs:
             raise FileNotFoundError(f"No images found in {img_dir}")
 
+        # Build (image, mask) pairs
         pairs = []
         for img_path in all_imgs:
             mp = mask_dir / img_path.name
@@ -71,16 +73,28 @@ class COVIDDataset(Dataset):
         if not pairs:
             raise FileNotFoundError(f"No (image, mask) pairs found in {root}")
 
-        rng = random.Random(seed)
-        rng.shuffle(pairs)
-        n_test      = 60
-        n_val       = max(1, int((len(pairs) - n_test) * val_ratio))
-        test_pairs  = pairs[-n_test:]
-        train_pairs = pairs[:-n_test]
-        val_pairs   = train_pairs[-n_val:]
-        train_pairs = train_pairs[:-n_val]
+        # Try pre-split: filenames end with _train / _val / _test before extension
+        train_pairs = [p for p in pairs if Path(p[0]).stem.endswith('_train')]
+        val_pairs   = [p for p in pairs if Path(p[0]).stem.endswith('_val')]
+        test_pairs  = [p for p in pairs if Path(p[0]).stem.endswith('_test')]
 
-        self.pairs = {'train': train_pairs, 'val': val_pairs, 'test': test_pairs}[split]
+        if train_pairs or val_pairs or test_pairs:
+            # Pre-split filenames present
+            splits = {'train': train_pairs, 'val': val_pairs, 'test': test_pairs}
+        else:
+            # Fallback: random split  64% / 16% / 20%
+            rng = random.Random(seed)
+            rng.shuffle(pairs)
+            n      = len(pairs)
+            n_test = max(1, int(n * 0.20))
+            n_val  = max(1, int(n * 0.16))
+            test_pairs  = pairs[-n_test:]
+            rest        = pairs[:-n_test]
+            val_pairs   = rest[-n_val:]
+            train_pairs = rest[:-n_val]
+            splits = {'train': train_pairs, 'val': val_pairs, 'test': test_pairs}
+
+        self.pairs     = splits[split]
         self.normalize = T.Normalize(mean=self.MEAN, std=self.STD)
 
     def __len__(self):
@@ -89,7 +103,7 @@ class COVIDDataset(Dataset):
     def __getitem__(self, idx):
         img_path, mask_path = self.pairs[idx]
 
-        img  = Image.open(img_path).convert('RGB')    # grayscale => 3ch
+        img  = Image.open(img_path).convert('RGB')
         mask = Image.open(mask_path).convert('L')
 
         img  = img.resize((self.img_size, self.img_size), Image.BILINEAR)
@@ -110,7 +124,7 @@ class COVIDDataset(Dataset):
             img, mask = TF.hflip(img), TF.hflip(mask)
         if random.random() > 0.5:
             img, mask = TF.vflip(img), TF.vflip(mask)
-        angle = random.uniform(-15, 15)    # smaller range for CT
+        angle = random.uniform(-15, 15)
         img   = TF.rotate(img,  angle, interpolation=TF.InterpolationMode.BILINEAR)
         mask  = TF.rotate(mask, angle, interpolation=TF.InterpolationMode.NEAREST)
         return img, mask
