@@ -94,8 +94,11 @@ def hd95(pred, gt, threshold: float = 0.5) -> float:
     p_surface = p ^ binary_erosion(p)
     g_surface = g ^ binary_erosion(g)
 
+    if not p_surface.any() and not g_surface.any():
+        return 0.0   # both empty (no lesion, nothing predicted) → perfect
     if not p_surface.any() or not g_surface.any():
-        return 0.0
+        # one side empty → maximal distance (image diagonal)
+        return float(np.sqrt(p.shape[0] ** 2 + p.shape[1] ** 2))
 
     # distance_transform_edt(~surface) = distance to nearest surface pixel
     dist_p = distance_transform_edt(~p_surface)   # dist from any pixel to pred surface
@@ -148,6 +151,8 @@ class MetricAccumulator:
 
     def summary(self) -> dict:
         """Returns {metric: {'mean': float, 'std': float}} for all metrics."""
+        if not self._records:
+            return {}
         keys = list(self._records[0].keys())
         result = {}
         for k in keys:

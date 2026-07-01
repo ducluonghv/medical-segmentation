@@ -64,15 +64,16 @@ class ChannelAttention(nn.Module):
 
     def __init__(self, in_channels, dropout=0.1):
         super().__init__()
-        self.scale = in_channels ** 0.5
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, x):
         B, C, H, W = x.size()
+        HW = H * W
+        scale = HW ** 0.5                             # scale by sqrt(HW), not sqrt(C)
         q = x.view(B, C, -1)                          # (B, C, HW)
         k = x.view(B, C, -1).permute(0, 2, 1)        # (B, HW, C)
         v = x.view(B, C, -1)                          # (B, C, HW)
-        attn = self.dropout(torch.softmax(torch.matmul(q / self.scale, k), dim=-1))  # (B, C, C)
+        attn = self.dropout(torch.softmax(torch.matmul(q / scale, k), dim=-1))  # (B, C, C)
         out = torch.matmul(attn, v).view(B, C, H, W)
         return out
 

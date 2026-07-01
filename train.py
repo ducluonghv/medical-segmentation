@@ -2,7 +2,7 @@
 Training script - consistent with TransAttUnet paper settings:
   Optimizer  : SGD, momentum=0.9, weight_decay=1e-4
   LR schedule: step-decay by ×0.1 every 40 epochs (MultiStepLR)
-  Initial LR : 1e-4
+  Initial LR : 0.01  (1e-4 was too low for training from scratch)
   Epochs     : 100
   Batch size : 4
   Loss       : 0.5 * BCE + 0.5 * Dice  (Eq. 9 of the paper)
@@ -25,7 +25,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 
 from datasets        import DATASET_REGISTRY, DATASET_DEFAULTS
-from models          import TransAttUnet, ProposedModel
+from models          import TransAttUnet, ProposedModel, UNet, AttUNet
 from utils.metrics   import MetricAccumulator
 from utils.visualize import plot_training_curves
 
@@ -77,6 +77,10 @@ def build_model(model_name: str, n_channels: int, n_classes: int):
         return ProposedModel(n_channels=n_channels, n_classes=n_classes, use_adar=True, use_csr=False)
     if model_name == 'csr_only':
         return ProposedModel(n_channels=n_channels, n_classes=n_classes, use_adar=False, use_csr=True)
+    if model_name == 'unet':
+        return UNet(n_channels=n_channels, n_classes=n_classes)
+    if model_name == 'att_unet':
+        return AttUNet(n_channels=n_channels, n_classes=n_classes)
     raise ValueError(f"Unknown model: {model_name}")
 
 
@@ -209,10 +213,11 @@ def parse_args():
                    choices=['isic', 'glas', 'covid', 'lung', 'dsb2018'])
     p.add_argument('--data_root',   type=str, required=True, help='Path to dataset root')
     p.add_argument('--model',       type=str, default='proposed',
-                   choices=['baseline', 'proposed', 'adar_only', 'csr_only'])
+                   choices=['baseline', 'proposed', 'adar_only', 'csr_only',
+                            'unet', 'att_unet'])
     p.add_argument('--epochs',      type=int, default=100)
     p.add_argument('--batch_size',  type=int, default=4)
-    p.add_argument('--lr',          type=float, default=1e-4)
+    p.add_argument('--lr',          type=float, default=0.01)
     p.add_argument('--num_workers', type=int, default=4)
     p.add_argument('--save_dir',    type=str, default='checkpoints')
     p.add_argument('--seed',        type=int, default=42)

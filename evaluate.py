@@ -67,7 +67,11 @@ def evaluate(args):
     DatasetCls = DATASET_REGISTRY[args.dataset]
     test_ds    = DatasetCls(args.data_root, split='test',
                             img_size=defaults['img_size'], augment=False)
-    test_loader = DataLoader(test_ds, batch_size=1, shuffle=False, num_workers=2)
+    import platform
+    nw = 2
+    if nw > 0 and platform.system() == 'Darwin' and not torch.cuda.is_available():
+        nw = 0
+    test_loader = DataLoader(test_ds, batch_size=1, shuffle=False, num_workers=nw)
 
     model = build_model(args.model, n_channels=defaults['n_channels'], n_classes=1)
     ckpt  = torch.load(args.checkpoint, map_location='cpu')
@@ -182,7 +186,8 @@ def parse_args():
                    choices=['isic', 'glas', 'covid', 'lung', 'dsb2018'])
     p.add_argument('--data_root',  type=str, required=True)
     p.add_argument('--model',      type=str, default='proposed',
-                   choices=['baseline', 'proposed', 'adar_only', 'csr_only'])
+                   choices=['baseline', 'proposed', 'adar_only', 'csr_only',
+                            'unet', 'att_unet'])
     p.add_argument('--checkpoint', type=str, required=True)
     p.add_argument('--output_dir', type=str, default='results')
     p.add_argument('--n_viz',      type=int, default=4, help='Samples for segmentation grid')

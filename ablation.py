@@ -174,7 +174,7 @@ def parse_args():
     p.add_argument('--data_root',   type=str, required=True)
     p.add_argument('--epochs',      type=int, default=100)
     p.add_argument('--batch_size',  type=int, default=4)
-    p.add_argument('--lr',          type=float, default=1e-4)
+    p.add_argument('--lr',          type=float, default=0.01)
     p.add_argument('--num_workers', type=int, default=4)
     p.add_argument('--ckpt_dir',    type=str, default='checkpoints')
     p.add_argument('--result_dir',  type=str, default='results')
