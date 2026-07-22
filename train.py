@@ -2,7 +2,7 @@
 Training script - consistent with TransAttUnet paper settings:
   Optimizer  : SGD, momentum=0.9, weight_decay=1e-4
   LR schedule: step-decay by ×0.1 every 40 epochs (MultiStepLR)
-  Initial LR : 0.01  (1e-4 was too low for training from scratch)
+  Initial LR : 0.0001  (paper setting, p.6 — matches TransAttUnet exactly)
   Epochs     : 100
   Batch size : 4
   Loss       : 0.5 * BCE + 0.5 * Dice  (Eq. 9 of the paper)
@@ -164,8 +164,10 @@ def train(args):
     save_dir = Path(args.save_dir) / args.dataset / args.model
     save_dir.mkdir(parents=True, exist_ok=True)
 
-    history  = {'train_loss': [], 'val_loss': [], 'val_dice': []}
-    best_dice = 0.0
+    history       = {'train_loss': [], 'val_loss': [], 'val_dice': []}
+    best_dice     = 0.0
+    no_improve    = 0
+    patience      = args.patience
 
     for epoch in range(1, args.epochs + 1):
         t0 = time.time()
@@ -187,7 +189,8 @@ def train(args):
         )
 
         if val_dice > best_dice:
-            best_dice = val_dice
+            best_dice  = val_dice
+            no_improve = 0
             torch.save({
                 'epoch': epoch,
                 'model_state': model.state_dict(),
@@ -195,6 +198,11 @@ def train(args):
                 'val_dice': val_dice,
             }, save_dir / 'best_model.pth')
             print(f"  ✓ Saved best model  (val_dice={best_dice*100:.2f}%)")
+        else:
+            no_improve += 1
+            if patience > 0 and no_improve >= patience:
+                print(f"\nEarly stopping at epoch {epoch} (no improvement for {patience} epochs).")
+                break
 
     # Save final model and training curves
     torch.save(model.state_dict(), save_dir / 'last_model.pth')
@@ -217,8 +225,10 @@ def parse_args():
                             'unet', 'att_unet'])
     p.add_argument('--epochs',      type=int, default=100)
     p.add_argument('--batch_size',  type=int, default=4)
-    p.add_argument('--lr',          type=float, default=0.01)
+    p.add_argument('--lr',          type=float, default=0.0001)
     p.add_argument('--num_workers', type=int, default=4)
+    p.add_argument('--patience',    type=int, default=20,
+                   help='Early-stop after N epochs without val-dice improvement (0=disable)')
     p.add_argument('--save_dir',    type=str, default='checkpoints')
     p.add_argument('--seed',        type=int, default=42)
     return p.parse_args()

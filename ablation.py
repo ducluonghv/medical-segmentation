@@ -69,6 +69,7 @@ def run_ablation(args):
                 batch_size  = args.batch_size,
                 lr          = args.lr,
                 num_workers = args.num_workers,
+                patience    = args.patience,
                 save_dir    = args.ckpt_dir,
                 seed        = args.seed,
             )
@@ -174,8 +175,10 @@ def parse_args():
     p.add_argument('--data_root',   type=str, required=True)
     p.add_argument('--epochs',      type=int, default=100)
     p.add_argument('--batch_size',  type=int, default=4)
-    p.add_argument('--lr',          type=float, default=0.01)
+    p.add_argument('--lr',          type=float, default=0.0001)
     p.add_argument('--num_workers', type=int, default=4)
+    p.add_argument('--patience',    type=int, default=20,
+                   help='Early-stop after N epochs without val-dice improvement (0=disable)')
     p.add_argument('--ckpt_dir',    type=str, default='checkpoints')
     p.add_argument('--result_dir',  type=str, default='results')
     p.add_argument('--seed',        type=int, default=42)

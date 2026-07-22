@@ -19,7 +19,7 @@ import torch.nn.functional as F
 class PositionEmbeddingLearned(nn.Module):
     """Learned 2-D positional encoding (same as TransAttUnet)."""
 
-    def __init__(self, num_pos_feats=256, max_len=32):
+    def __init__(self, num_pos_feats=256, max_len=64):
         super().__init__()
         self.row_embed = nn.Embedding(max_len, num_pos_feats)
         self.col_embed = nn.Embedding(max_len, num_pos_feats)

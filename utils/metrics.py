@@ -170,7 +170,10 @@ class MetricAccumulator:
         print(header)
         print('─' * len(header))
         for k, v in s.items():
-            print(f"{k.upper():>8}  {v['mean']*100:8.2f}  {v['std']*100:8.2f}")
+            if k == 'hd95':
+                print(f"{k.upper():>8}  {v['mean']:8.2f}  {v['std']:8.2f}  px")
+            else:
+                print(f"{k.upper():>8}  {v['mean']*100:8.2f}  {v['std']*100:8.2f}  %")
         print()
         return s
 

@@ -116,10 +116,13 @@ def evaluate(args):
         f.write(f"Model   : {args.model}\n")
         f.write(f"Dataset : {args.dataset}\n")
         f.write(f"Samples : {len(per_sample)}\n\n")
-        f.write(f"{'Metric':>8}  {'Mean (%)':>10}  {'Std (%)':>10}\n")
+        f.write(f"{'Metric':>8}  {'Mean':>10}  {'Std':>10}\n")
         f.write('-' * 34 + '\n')
         for k, v in summary.items():
-            f.write(f"{k.upper():>8}  {v['mean']*100:10.2f}  {v['std']*100:10.2f}\n")
+            if k == 'hd95':   # pixel units, not a ratio
+                f.write(f"{k.upper():>8}  {v['mean']:10.2f}  {v['std']:10.2f}\n")
+            else:
+                f.write(f"{k.upper():>8}  {v['mean']*100:10.2f}  {v['std']*100:10.2f}\n")
 
     # ── Per-sample CSV ─────────────────────────────────────────────────
     csv_path = out_dir / 'metrics.csv'
